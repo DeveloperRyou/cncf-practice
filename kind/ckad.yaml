@@ -1,0 +1,8 @@
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+# Docker Desktop's WSL2 VM runs cgroup v1; kubelet >= 1.35 refuses to start on
+# it unless failCgroupV1 is turned off.
+kubeadmConfigPatches:
+- |
+  kind: KubeletConfiguration
+  failCgroupV1: false
