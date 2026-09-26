@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Install kubectl and kind into ~/.local/bin (no sudo), verifying checksums.
-# Pin versions with KUBECTL_VERSION=v1.37.1 / KIND_VERSION=v0.33.0.
+# Install kubectl, kind and ttyd into ~/.local/bin (no sudo), verifying checksums.
+# Pin versions with KUBECTL_VERSION=v1.37.1 / KIND_VERSION=v0.33.0 / TTYD_VERSION=1.7.7.
 set -euo pipefail
 
 BIN_DIR="${BIN_DIR:-$HOME/.local/bin}"
@@ -15,6 +15,10 @@ if [ -z "${KIND_VERSION:-}" ]; then
   # Fetch fully before grepping: grep -m1 closing the pipe early makes curl fail under pipefail.
   release_json="$(curl -fsSL https://api.github.com/repos/kubernetes-sigs/kind/releases/latest)"
   KIND_VERSION="$(grep -m1 '"tag_name"' <<<"$release_json" | cut -d'"' -f4)"
+fi
+if [ -z "${TTYD_VERSION:-}" ]; then
+  release_json="$(curl -fsSL https://api.github.com/repos/tsl0922/ttyd/releases/latest)"
+  TTYD_VERSION="$(grep -m1 '"tag_name"' <<<"$release_json" | cut -d'"' -f4)"
 fi
 
 tmp="$(mktemp -d)"
@@ -32,9 +36,17 @@ curl -fsSLo "kind-linux-$ARCH" "https://kind.sigs.k8s.io/dl/$KIND_VERSION/kind-l
 curl -fsSL "https://kind.sigs.k8s.io/dl/$KIND_VERSION/kind-linux-$ARCH.sha256sum" | sha256sum -c -
 install -m 0755 "kind-linux-$ARCH" "$BIN_DIR/kind"
 
+# ttyd serves the exam UI's terminal (scripts/exam.sh).
+echo "ttyd $TTYD_VERSION"
+TTYD_ASSET="ttyd.$(uname -m | sed 's/arm64/aarch64/')"
+curl -fsSLo "$TTYD_ASSET" "https://github.com/tsl0922/ttyd/releases/download/$TTYD_VERSION/$TTYD_ASSET"
+curl -fsSL "https://github.com/tsl0922/ttyd/releases/download/$TTYD_VERSION/SHA256SUMS" | grep " $TTYD_ASSET\$" | sha256sum -c -
+install -m 0755 "$TTYD_ASSET" "$BIN_DIR/ttyd"
+
 case ":$PATH:" in
   *":$BIN_DIR:"*) ;;
   *) echo "note: add $BIN_DIR to PATH" ;;
 esac
 "$BIN_DIR/kubectl" version --client
 "$BIN_DIR/kind" version
+"$BIN_DIR/ttyd" --version

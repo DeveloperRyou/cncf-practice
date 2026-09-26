@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mock Exam</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Crect width=%2216%22 height=%2216%22 rx=%223%22 fill=%22%233b82f6%22/%3E%3C/svg%3E">
+<script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
+<style>
+  :root {
+    --bg: #0d1117; --panel: #161b22; --border: #30363d; --text: #e6edf3;
+    --muted: #8b949e; --accent: #3b82f6; --ok: #22c55e; --flag: #f59e0b;
+    --code: #1f2937; --danger: #ef4444;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+    font: 15px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  body { display: flex; flex-direction: column; }
+  [hidden] { display: none !important; }
+
+  header { display: flex; align-items: center; gap: 12px; padding: 8px 16px; min-height: 48px;
+    background: var(--panel); border-bottom: 1px solid var(--border); flex: none; }
+  header h1 { font-size: 15px; margin: 0; font-weight: 600; }
+  header .spacer { flex: 1; }
+  #timer { font: 600 18px/1 ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  #timer.low { color: var(--danger); }
+  button { background: var(--code); color: var(--text); border: 1px solid var(--border);
+    border-radius: 6px; padding: 6px 12px; font: inherit; font-size: 14px; cursor: pointer; }
+  button:hover:not(:disabled) { border-color: var(--accent); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  a { color: var(--accent); }
+  code { background: var(--code); padding: 1px 5px; border-radius: 4px; font: 0.92em ui-monospace, monospace; }
+  pre { background: var(--code); padding: 10px 12px; border-radius: 6px; overflow: auto; position: relative; }
+  pre code { padding: 0; background: none; }
+
+  /* --- centered screens (setup, rounds, prepare, finished) --- */
+  .page { flex: 1; overflow: auto; padding: 32px 16px; }
+  .page > .inner { max-width: 760px; margin: 0 auto; }
+  .page h2 { font-size: 22px; margin: 0 0 4px; }
+  .page .sub { color: var(--muted); margin: 0 0 24px; }
+  .steps { display: flex; gap: 8px; color: var(--muted); font-size: 13px; margin-bottom: 20px; flex-wrap: wrap; }
+  .steps span.on { color: var(--text); font-weight: 600; }
+  .checks { list-style: none; padding: 0; margin: 0 0 24px; border: 1px solid var(--border); border-radius: 8px; }
+  .checks li { display: flex; gap: 12px; align-items: baseline; padding: 10px 14px; border-top: 1px solid var(--border); }
+  .checks li:first-child { border-top: 0; }
+  .checks .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--danger); flex: none; transform: translateY(1px); }
+  .checks .ok .dot { background: var(--ok); }
+  .checks .warn .dot { background: var(--flag); }
+  .checks .hint { color: var(--muted); font-size: 13px; margin-left: auto; text-align: right; }
+  .cards { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+  .card { text-align: left; padding: 16px; border-radius: 8px; background: var(--panel); }
+  .card .cert { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+  .card .name { font-size: 16px; font-weight: 600; margin: 4px 0; }
+  .card .meta { color: var(--muted); font-size: 13px; }
+  .card .badge { display: inline-block; font-size: 11px; padding: 1px 6px; border-radius: 4px; border: 1px solid var(--ok); color: var(--ok); margin-left: 6px; }
+  .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 16px 0; }
+  .status { font-size: 14px; color: var(--muted); }
+  .status.ok { color: var(--ok); } .status.failed { color: var(--danger); }
+  #prepLog { max-height: 320px; min-height: 120px; font: 12px/1.5 ui-monospace, monospace; white-space: pre-wrap; }
+  .info { border: 1px solid var(--border); border-radius: 8px; padding: 4px 16px; margin-bottom: 20px; }
+
+  /* --- exam screen --- */
+  #examView { flex: 1; display: flex; min-height: 0; }
+  #left { width: 42%; min-width: 280px; display: flex; flex-direction: column; min-height: 0; }
+  #divider { width: 6px; cursor: col-resize; background: var(--border); flex: none; }
+  #divider:hover, body.dragging #divider { background: var(--accent); }
+  body.dragging iframe { pointer-events: none; }
+  body.dragging { user-select: none; }
+  #right { flex: 1; min-width: 280px; display: flex; }
+  iframe { flex: 1; border: 0; background: var(--bg); }
+  nav { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px; border-bottom: 1px solid var(--border); flex: none; }
+  nav button { position: relative; min-width: 44px; }
+  nav button.active { background: var(--accent); border-color: var(--accent); }
+  nav button.flagged::after { content: ""; position: absolute; top: -3px; right: -3px;
+    width: 8px; height: 8px; border-radius: 50%; background: var(--flag); }
+  #content { flex: 1; overflow: auto; padding: 8px 20px 40px; }
+  #content h2 { font-size: 18px; }
+  .md :not(pre) > code { cursor: copy; }
+  .md :not(pre) > code:hover { outline: 1px solid var(--accent); }
+  pre .copy { position: absolute; top: 6px; right: 6px; font-size: 12px; padding: 2px 8px; }
+  .qbar { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+  .qbar .weight { color: var(--muted); font-size: 13px; }
+  .qbar .spacer { flex: 1; }
+  .flag-btn.on { border-color: var(--flag); color: var(--flag); }
+  .qnav { display: flex; justify-content: space-between; margin-top: 24px; }
+
+  #toast { position: fixed; bottom: 16px; left: 16px; background: var(--accent); color: #fff;
+    padding: 6px 12px; border-radius: 6px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+  #toast.show { opacity: 1; }
+
+  @media (max-width: 800px) {
+    #examView { flex-direction: column; }
+    #left { width: auto !important; height: 45%; min-width: 0; }
+    #divider { display: none; }
+    #right { min-width: 0; }
+    .checks li { flex-wrap: wrap; }
+    .checks .hint { margin-left: 22px; text-align: left; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="title">Mock Exam</h1>
+  <div class="spacer"></div>
+  <span id="timer" hidden></span>
+  <button id="endBtn" hidden>End exam</button>
+</header>
+
+<!-- 1. environment -->
+<section class="page" id="setupView" hidden><div class="inner">
+  <div class="steps"></div>
+  <h2>Environment</h2>
+  <p class="sub">The exam runs against your local kind cluster through a terminal served from WSL.</p>
+  <ul class="checks" id="checks"></ul>
+  <div id="onboard" hidden>
+    <p>No local exam server found at <code id="apiBase"></code>. In WSL:</p>
+    <pre><code>git clone https://github.com/DeveloperRyou/cncf-practice.git   # first time only
+cd cncf-practice
+./scripts/install.sh   # kubectl, kind, ttyd -- first time only
+./scripts/exam.sh      # keep it running while you use this page</code></pre>
+    <p class="sub">If the browser asks to allow access to devices on your local network, allow it -- that is how this page reaches the server and terminal on localhost.</p>
+  </div>
+  <div class="row"><button class="primary" id="toRounds" disabled>Continue</button><span class="status" id="setupStatus">Checking…</span></div>
+</div></section>
+
+<!-- 2. rounds -->
+<section class="page" id="roundsView" hidden><div class="inner">
+  <div class="steps"></div>
+  <h2>Mock exams</h2>
+  <p class="sub">Pick a round. The next step rebuilds the cluster for it.</p>
+  <div class="cards" id="cards"></div>
+</div></section>
+
+<!-- 3-4. prepare -->
+<section class="page" id="prepView" hidden><div class="inner">
+  <div class="steps"></div>
+  <h2 id="prepTitle"></h2>
+  <p class="sub" id="prepSub"></p>
+  <div class="info md" id="prepInfo"></div>
+  <label><input type="checkbox" id="recreate" checked> Recreate the cluster first (<code>down.sh</code> + <code>up.sh</code>)</label>
+  <div class="row">
+    <button id="prepBtn">Prepare environment</button>
+    <button class="primary" id="startBtn" disabled>Start exam</button>
+    <span class="status" id="prepStatus"></span>
+  </div>
+  <pre id="prepLog" hidden></pre>
+  <p><a href="#/rounds">← Back to rounds</a></p>
+</div></section>
+
+<!-- 5. exam -->
+<main id="examView" hidden>
+  <section id="left">
+    <nav id="tabs"></nav>
+    <article id="content" class="md"></article>
+  </section>
+  <div id="divider" title="Drag to resize"></div>
+  <section id="right"><iframe id="term" title="Terminal" allow="local-network-access; local-network; loopback-network; clipboard-read; clipboard-write"></iframe></section>
+</main>
+
+<!-- finished -->
+<section class="page" id="doneView" hidden><div class="inner">
+  <h2>Exam finished</h2>
+  <p class="sub" id="doneSub"></p>
+  <p>Ask the agent to grade it:</p>
+  <pre><code id="doneCmd"></code></pre>
+  <p><a href="#/rounds">← Back to rounds</a></p>
+</div></section>
+
+<div id="toast"></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const VIEWS = ["setupView", "roundsView", "prepView", "examView", "doneView"];
+const STEP_NAMES = ["Environment", "Choose a round", "Prepare", "Exam"];
+const store = {
+  get(k, d) { try { const v = localStorage.getItem("exam:" + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem("exam:" + k, JSON.stringify(v)); } catch {} },
+  del(k) { try { localStorage.removeItem("exam:" + k); } catch {} },
+};
+// The local server (scripts/exam.sh). Same origin when it serves this page;
+// otherwise (a deployed copy) it's on localhost. Override with ?api=.
+const LOCAL = ["localhost", "127.0.0.1"].includes(location.hostname);
+const API = new URLSearchParams(location.search).get("api") || (LOCAL ? "" : "http://localhost:8000");
+const API_VERSION = 1;
+const api = async (path, opts) => { const r = await fetch(API + path, { cache: "no-store", ...opts }); return r.json(); };
+const md = (text) => window.marked ? marked.parse(text) : `<pre>${text.replace(/[&<]/g, c => ({ "&": "&amp;", "<": "&lt;" })[c])}</pre>`;
+
+let env = null, roundList = [], poller = null, ticker = null;
+
+function show(view, step, title) {
+  VIEWS.forEach(v => $(v).hidden = v !== view);
+  $("title").textContent = title || "Mock Exam";
+  document.title = title || "Mock Exam";
+  document.querySelectorAll(".steps").forEach(el => {
+    el.innerHTML = STEP_NAMES.map((n, i) => `<span class="${i === step ? "on" : ""}">${i + 1}. ${n}</span>`).join("<span>›</span>");
+  });
+  const inExam = view === "examView";
+  $("timer").hidden = $("endBtn").hidden = !inExam;
+  clearInterval(poller); clearInterval(ticker);
+}
+
+// --- sheet parsing ----------------------------------------------------------
+async function loadSheet(round) {
+  const res = await fetch(`${API}/api/sheet?round=${encodeURIComponent(round)}`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`${round}/README.md: ${res.status}`);
+  const text = await res.text();
+  const title = (text.match(/^# (.*)$/m) || [, round])[1];
+  const parts = text.split(/^(?=## Question )/m);
+  const info = parts.shift().replace(/^# .*\n/, "").replace(/\n-{3,}\s*$/, "");
+  const questions = parts.map((p, i) => {
+    const m = p.match(/^## Question (\d+) \((\d+)%\)/);
+    return { n: m ? m[1] : String(i + 1), weight: m ? m[2] : null, md: p.replace(/\n-{3,}\s*$/, "") };
+  });
+  return { title, info, questions };
+}
+
+// --- 1. environment ---------------------------------------------------------
+async function viewSetup() {
+  show("setupView", 0);
+  $("apiBase").textContent = API || location.origin;
+  const install = "run <code>./scripts/install.sh</code>";
+  const check = async () => {
+    try { env = await api("/api/env"); } catch { env = null; }
+    let items;  // [label, "ok" | "warn" | "fail", hint]
+    if (!env) {
+      items = [["Local exam server", "fail", "run <code>./scripts/exam.sh</code>"]];
+    } else {
+      const r = env.repo || {};
+      const repo = env.version !== API_VERSION ? ["fail", "this page is newer than your clone -- run <code>git pull</code>"]
+        : r.behind > 0 ? ["warn", `${r.behind} commit(s) behind ${r.upstream} -- run <code>git pull</code> for the latest rounds`]
+        : r.behind === null ? ["warn", "no upstream branch -- can't tell if rounds are current"]
+        : r.fetched === false ? ["warn", "couldn't reach GitHub to check for new rounds"]
+        : r.fetched === null ? ["warn", "checking GitHub for new rounds…"]
+        : ["ok", `up to date with ${r.upstream}`];
+      items = [
+        ["Local exam server", "ok", env.root],
+        ["Repository", ...repo],
+        ["Terminal (ttyd)", env.terminal ? "ok" : "fail", env.terminal ? "ready" : "restart <code>./scripts/exam.sh</code>"],
+        ["Docker", env.docker ? "ok" : "fail", env.docker ? "ready" : "start Docker Desktop (WSL integration on)"],
+        ["kind", env.kind ? "ok" : "fail", env.kind ? "ready" : install],
+        ["kubectl", env.kubectl ? "ok" : "fail", env.kubectl ? "ready" : install],
+      ];
+    }
+    $("checks").innerHTML = items.map(([label, st, hint]) =>
+      `<li class="${st}"><span class="dot"></span>${label}<span class="hint">${hint}</span></li>`).join("");
+    $("onboard").hidden = !!env;
+    const ready = items.every(([, st]) => st !== "fail");
+    $("toRounds").disabled = !ready;
+    $("setupStatus").textContent = ready ? "All set." : "Waiting… (rechecks every 3s)";
+    $("setupStatus").className = "status" + (ready ? " ok" : "");
+  };
+  await check();
+  poller = setInterval(check, 3000);
+}
+$("toRounds").onclick = () => location.hash = "#/rounds";
+
+// --- 2. rounds --------------------------------------------------------------
+async function viewRounds() {
+  show("roundsView", 1);
+  roundList = await api("/api/rounds");
+  $("cards").innerHTML = "";
+  for (const r of roundList) {
+    const b = document.createElement("button");
+    b.className = "card";
+    const session = store.get(`session:${r.round}`, null);
+    const state = session && !session.endedAt ? " · in progress" : "";
+    b.innerHTML = `<div class="cert">${r.cert}</div>
+      <div class="name">${r.round.split("/")[1].replace("round-", "Round ")}${r.graded ? '<span class="badge">graded</span>' : ""}</div>
+      <div class="meta">${r.questions} questions · ${r.minutes} min${state}</div>`;
+    b.onclick = () => location.hash = `#/prepare/${r.round}`;
+    $("cards").appendChild(b);
+  }
+  if (!roundList.length) $("cards").textContent = "No rounds found.";
+}
+
+// --- 3-4. prepare -----------------------------------------------------------
+async function viewPrepare(round) {
+  show("prepView", 2);
+  const sheet = await loadSheet(round);
+  const meta = (roundList.length ? roundList : await api("/api/rounds")).find(r => r.round === round) || {};
+  show("prepView", 2, sheet.title);
+  $("prepTitle").textContent = sheet.title;
+  $("prepSub").textContent = `${sheet.questions.length} questions · ${meta.minutes || 40} minutes`;
+  // The sheet's own "before you start" commands are what the Prepare button runs.
+  $("prepInfo").innerHTML = md(sheet.info.replace(/## Before you start[\s\S]*?(?=\n## |$)/, ""));
+  wireCopy($("prepInfo"));
+
+  const render = (job) => {
+    const mine = job.round === round;
+    const running = job.state === "running";
+    $("prepBtn").disabled = running;
+    $("prepBtn").textContent = mine && job.state === "ok" ? "Prepare again" : "Prepare environment";
+    $("startBtn").disabled = !(mine && job.state === "ok");
+    $("prepLog").hidden = !(mine || running) || !job.log;
+    $("prepLog").textContent = job.log;
+    $("prepLog").scrollTop = $("prepLog").scrollHeight;
+    const s = $("prepStatus");
+    s.className = "status";
+    if (running && !mine) s.textContent = `Another round (${job.round}) is being prepared…`;
+    else if (running) s.textContent = "Preparing… (a fresh cluster takes about a minute)";
+    else if (mine && job.state === "ok") { s.textContent = "Environment ready."; s.className = "status ok"; }
+    else if (mine && job.state === "failed") { s.textContent = "Setup failed -- see the log."; s.className = "status failed"; }
+    else s.textContent = "";
+    return running;
+  };
+  const poll = async () => { if (!render(await api("/api/job"))) clearInterval(poller); };
+  if (render(await api("/api/job"))) poller = setInterval(poll, 1000);
+
+  $("prepBtn").onclick = async () => {
+    const res = await api("/api/prepare", { method: "POST", headers: { "Content-Type": "application/json", "X-Exam": "1" },
+      body: JSON.stringify({ round, recreate: $("recreate").checked }) });
+    if (res.error) { toast(res.error); return; }
+    render(res); clearInterval(poller); poller = setInterval(poll, 1000);
+  };
+  $("startBtn").onclick = () => {
+    store.set(`session:${round}`, { startedAt: Date.now(), minutes: meta.minutes || 40, flags: {}, current: 0 });
+    location.hash = `#/exam/${round}`;
+  };
+}
+
+// --- 5. exam ----------------------------------------------------------------
+async function viewExam(round) {
+  const session = store.get(`session:${round}`, null);
+  if (!session || session.endedAt) { location.hash = `#/prepare/${round}`; return; }
+  const sheet = await loadSheet(round);
+  show("examView", 3, sheet.title);
+  if (!env) env = await api("/api/env");
+  const src = `http://localhost:${env.termPort}/`;
+  if ($("term").getAttribute("src") !== src) $("term").src = src;
+
+  const save = () => store.set(`session:${round}`, session);
+  const render = () => {
+    const tabs = $("tabs");
+    tabs.innerHTML = "";
+    sheet.questions.forEach((q, i) => {
+      const b = document.createElement("button");
+      b.textContent = q.n;
+      b.title = `Question ${q.n}` + (q.weight ? ` (${q.weight}%)` : "");
+      if (i === session.current) b.classList.add("active");
+      if (session.flags[q.n]) b.classList.add("flagged");
+      b.onclick = () => { session.current = i; save(); render(); };
+      tabs.appendChild(b);
+    });
+    const q = sheet.questions[session.current] || sheet.questions[0];
+    const c = $("content");
+    c.innerHTML = md(q.md);
+    const bar = document.createElement("div");
+    bar.className = "qbar";
+    bar.innerHTML = `<span class="weight">${q.weight ? `Weight ${q.weight}%` : ""}</span><span class="spacer"></span>`;
+    const flag = document.createElement("button");
+    flag.className = "flag-btn" + (session.flags[q.n] ? " on" : "");
+    flag.textContent = session.flags[q.n] ? "Flagged" : "Flag for review";
+    flag.onclick = () => { session.flags[q.n] = !session.flags[q.n]; save(); render(); };
+    bar.appendChild(flag);
+    c.prepend(bar);
+    const nav = document.createElement("div");
+    nav.className = "qnav";
+    const prev = document.createElement("button"), next = document.createElement("button");
+    prev.textContent = "← Previous"; next.textContent = "Next →";
+    prev.disabled = session.current === 0; next.disabled = session.current === sheet.questions.length - 1;
+    prev.onclick = () => { session.current--; save(); render(); };
+    next.onclick = () => { session.current++; save(); render(); };
+    nav.append(prev, next);
+    c.appendChild(nav);
+    wireCopy(c);
+    c.scrollTop = 0;
+  };
+  render();
+
+  const tick = () => {
+    const ms = session.minutes * 60000 - (Date.now() - session.startedAt);
+    const abs = Math.abs(ms), m = Math.floor(abs / 60000), s = Math.floor(abs / 1000) % 60;
+    $("timer").textContent = `${ms < 0 ? "-" : ""}${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+    $("timer").classList.toggle("low", ms < 5 * 60000);
+  };
+  tick(); ticker = setInterval(tick, 500);
+  $("endBtn").onclick = () => {
+    if (!confirm("End the exam? The timer stops and you can't return to it.")) return;
+    session.endedAt = Date.now(); save();
+    location.hash = `#/done/${round}`;
+  };
+}
+
+function viewDone(round) {
+  const session = store.get(`session:${round}`, null);
+  show("doneView", -1, "Exam finished");
+  const used = session && session.endedAt ? Math.round((session.endedAt - session.startedAt) / 60000) : null;
+  $("doneSub").textContent = used === null ? round : `${round} -- ${used} min used of ${session.minutes}.`;
+  $("doneCmd").textContent = `${round} 채점해줘`;
+}
+
+// --- helpers ----------------------------------------------------------------
+function wireCopy(root) {
+  root.querySelectorAll("pre").forEach(pre => {
+    const b = document.createElement("button");
+    b.className = "copy"; b.textContent = "Copy";
+    b.onclick = () => copy(pre.querySelector("code")?.innerText ?? pre.innerText);
+    pre.appendChild(b);
+  });
+  root.querySelectorAll(":not(pre) > code").forEach(c => c.onclick = () => copy(c.innerText));
+}
+function copy(text) {
+  navigator.clipboard.writeText(text.trim()).then(() => toast(`Copied: ${text.trim().slice(0, 40)}`), () => toast("Copy failed"));
+}
+let toastTimer;
+function toast(msg) {
+  const t = $("toast");
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 1500);
+}
+
+const left = $("left");
+left.style.width = store.get("split", "42%");
+$("divider").addEventListener("pointerdown", e => {
+  e.preventDefault();
+  document.body.classList.add("dragging");
+  const move = ev => { left.style.width = `${Math.min(Math.max(ev.clientX, 280), innerWidth - 280)}px`; };
+  const up = () => {
+    document.body.classList.remove("dragging");
+    store.set("split", left.style.width);
+    removeEventListener("pointermove", move); removeEventListener("pointerup", up);
+  };
+  addEventListener("pointermove", move); addEventListener("pointerup", up);
+});
+
+// --- router -----------------------------------------------------------------
+async function route() {
+  const [, view, ...rest] = (location.hash || "#/").slice(1).split("/");
+  const round = rest.join("/");
+  try {
+    if (view === "rounds") await viewRounds();
+    else if (view === "prepare" && round) await viewPrepare(round);
+    else if (view === "exam" && round) await viewExam(round);
+    else if (view === "done" && round) viewDone(round);
+    else await viewSetup();
+  } catch (e) {
+    toast(String(e.message || e));
+  }
+}
+addEventListener("hashchange", route);
+route();
+</script>
+</body>
+</html>

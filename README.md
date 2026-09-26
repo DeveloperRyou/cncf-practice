@@ -21,6 +21,7 @@ killer.sh 형식의 모의고사를 출제·채점한다.
 | cgroup | v2 전용 |
 | kubectl | v1.37.1 |
 | kind | v0.33.0 (노드 이미지 `kindest/node:v1.37.0`) |
+| ttyd | 1.7.7 |
 
 ## 사전 준비
 
@@ -48,7 +49,7 @@ killer.sh 형식의 모의고사를 출제·채점한다.
 ## 클러스터 띄우기
 
 ```bash
-./scripts/install.sh   # kubectl, kind를 ~/.local/bin에 설치 (체크섬 검증)
+./scripts/install.sh   # kubectl, kind, ttyd를 ~/.local/bin에 설치 (체크섬 검증)
 ./scripts/up.sh        # 클러스터 생성 + 파드를 띄울 수 있을 때까지 대기
 ```
 
@@ -73,9 +74,50 @@ kubectl delete pod nginx
 
 옵션:
 
-- `KUBECTL_VERSION=v1.37.1 KIND_VERSION=v0.33.0 ./scripts/install.sh` --
+- `KUBECTL_VERSION=v1.37.1 KIND_VERSION=v0.33.0 TTYD_VERSION=1.7.7 ./scripts/install.sh` --
   버전 고정 (생략하면 최신 stable)
 - `CLUSTER_NAME=foo ./scripts/up.sh` -- 클러스터 이름 (기본 `cncf`)
+
+## 시험 화면 (killer.sh 스타일)
+
+```bash
+./scripts/exam.sh    # http://localhost:8000/ 을 Windows 브라우저에서 연다
+```
+
+1. **환경 확인** -- 터미널(ttyd), Docker, kind, kubectl이 준비됐는지 확인.
+2. **회차 선택** -- `*/round-*/README.md`를 찾아 목록을 보여 준다.
+3. **환경 준비** -- 버튼 한 번으로 `down.sh` → `up.sh` → `<회차>/setup.sh`를
+   돌리고 로그를 보여 준다.
+4. 준비가 끝나야 **Start exam**이 켜진다.
+5. 시작하면 타이머가 돌고, 왼쪽에 문제(번호 탭, 플래그, 인라인 코드 클릭 시
+   복사), 오른쪽에 WSL bash 터미널(`k` 별칭·자동완성, 저장소 루트에서
+   시작)이 뜬다. **End exam**을 누르면 채점 요청 문구가 나온다.
+
+- 두 서버 모두 `127.0.0.1`에만 바인딩한다. WSL localhost 포워딩으로 같은
+  PC의 Windows 브라우저에서만 열리고, 네트워크의 다른 기기에서는 안 열린다.
+- ttyd는 `-O`로 다른 origin의 웹소켓 연결을 거부하고, 준비 API는 정해진
+  스크립트만 돌리며 커스텀 헤더 없는 요청을 거부한다. 브라우저에 열린 다른
+  사이트가 터미널이나 클러스터를 건드릴 수 없다.
+- 웹서버는 UI와 문제지(`README.md`)만 내보낸다. `grade.sh` 등은 404.
+  외부 도메인으로 `localhost`를 가리키는 요청(DNS rebinding)도 거부한다.
+- 포트는 `WEB_PORT`, `TERM_PORT`로 바꾼다 (기본 8000, 7681).
+
+### 배포 (Cloudflare Pages)
+
+`exam/web/`만 정적 사이트로 올리고, 문제지·클러스터·터미널은 각자 로컬
+클론의 `./scripts/exam.sh`에 붙는다. 배포된 페이지의 환경 확인 화면이 로컬
+서버가 없으면 clone/install/실행 방법을, 클론이 upstream보다 뒤처지면
+`git pull`을 안내한다.
+
+- Pages 프로젝트를 이 GitHub 저장소에 연결하고 빌드 명령 없이 출력
+  디렉터리를 `exam/web`으로 둔다. 또는 `npx wrangler pages deploy exam/web
+  --project-name cncf-practice`.
+- 로컬 서버는 `EXAM_ORIGINS`(쉼표 구분, 기본
+  `https://cncf-practice.pages.dev`)에 있는 origin의 요청만 받는다. 다른
+  도메인에 배포하면 `EXAM_ORIGINS=https://<도메인> ./scripts/exam.sh`.
+- Chrome/Edge는 공개 사이트가 localhost에 접근할 때 "로컬 네트워크 접근"
+  권한을 한 번 묻는다. 허용해야 한다. Safari는 https 페이지에서
+  `http://localhost`를 막으므로 지원하지 않는다.
 
 ## 알아둘 것
 
