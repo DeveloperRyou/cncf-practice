@@ -30,7 +30,7 @@ ROUND_RE = re.compile(r"^[a-z0-9-]+/round-\d+$")
 WEB = ROOT / "exam" / "web"
 # Origins of deployed copies of the UI allowed to call this server.
 ORIGINS = {o.strip().rstrip("/") for o in os.environ.get(
-    "EXAM_ORIGINS", "https://cncf-practice.pages.dev").split(",") if o.strip()}
+    "EXAM_ORIGINS", "https://cncf-practice.developerryou.workers.dev").split(",") if o.strip()}
 API_VERSION = 1
 
 

@@ -1,0 +1,9 @@
+{
+  // Only the exam UI is public; sheets, scripts and the terminal stay on
+  // each user's machine (scripts/exam.sh).
+  "name": "cncf-practice",
+  "compatibility_date": "2026-09-27",
+  "assets": {
+    "directory": "./exam/web"
+  }
+}

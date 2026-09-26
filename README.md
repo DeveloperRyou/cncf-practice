@@ -102,18 +102,19 @@ kubectl delete pod nginx
   외부 도메인으로 `localhost`를 가리키는 요청(DNS rebinding)도 거부한다.
 - 포트는 `WEB_PORT`, `TERM_PORT`로 바꾼다 (기본 8000, 7681).
 
-### 배포 (Cloudflare Pages)
+### 배포 (Cloudflare Workers)
+
+<https://cncf-practice.developerryou.workers.dev/>
 
 `exam/web/`만 정적 사이트로 올리고, 문제지·클러스터·터미널은 각자 로컬
 클론의 `./scripts/exam.sh`에 붙는다. 배포된 페이지의 환경 확인 화면이 로컬
 서버가 없으면 clone/install/실행 방법을, 클론이 upstream보다 뒤처지면
 `git pull`을 안내한다.
 
-- Pages 프로젝트를 이 GitHub 저장소에 연결하고 빌드 명령 없이 출력
-  디렉터리를 `exam/web`으로 둔다. 또는 `npx wrangler pages deploy exam/web
-  --project-name cncf-practice`.
+- `v*` 태그(릴리스)를 push하면 GitHub Actions가 `wrangler deploy`로
+  배포한다(`wrangler.jsonc`, 저장소 시크릿 `CLOUDFLARE_API_TOKEN` 필요).
 - 로컬 서버는 `EXAM_ORIGINS`(쉼표 구분, 기본
-  `https://cncf-practice.pages.dev`)에 있는 origin의 요청만 받는다. 다른
+  `https://cncf-practice.developerryou.workers.dev`)에 있는 origin의 요청만 받는다. 다른
   도메인에 배포하면 `EXAM_ORIGINS=https://<도메인> ./scripts/exam.sh`.
 - Chrome/Edge는 공개 사이트가 localhost에 접근할 때 "로컬 네트워크 접근"
   권한을 한 번 묻는다. 허용해야 한다. Safari는 https 페이지에서
