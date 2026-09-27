@@ -23,8 +23,16 @@ AI 에이전트가 모의고사를 출제하고, 사용자가 로컬 클러스�
     README.md               # 문제지 (사용자가 보는 유일한 파일)
     setup.sh                # 문제 풀기 전 사전 리소스 생성 (멱등)
     grade.sh                # 자동 채점 스크립트
+    meta.json               # 문제별 CKAD 영역과 세부 주제 (결과 화면용)
     answers/                # 사용자가 파일로 제출하는 답
-    result.md               # 채점 결과 (채점 후 생성)
+    finished.json           # 시험 화면에서 End exam 시 생성 (종료 기록)
+    grade.json              # 시험 화면이 grade.sh를 돌려 저장한 채점 결과
+    attempts/<시각>/        # 재시험 준비 시 이전 answers/·finished·grade 보관
+    result.md               # 에이전트 채점 결과·해설 (채점 후 생성)
+
+answers/ 내용, finished.json, grade.json, attempts/, result.md, 풀이 중 만든
+기타 파일은 개인 기록이라 .gitignore로 제외한다. 회차에서 커밋되는 것은
+README.md, setup.sh, grade.sh, meta.json, answers/.gitkeep뿐이다.
   round-02/
   ...
 ```
@@ -78,15 +86,24 @@ AI 에이전트가 모의고사를 출제하고, 사용자가 로컬 클러스�
 진행한다. 화면은 문제지의 `# 제목`, `NN minutes`, `## Question N (W%)`
 제목을 파싱하므로 이 형식을 지킨다.
 
+결과 화면은 `grade.sh` 출력의 `  PASS  [Q1] 2  설명` / `Q1   0 / 18` 줄을
+파싱하므로 round-01의 `check()` 출력 형식을 그대로 쓴다. `meta.json`은
+`{"questions": {"1": {"domain": "<CKAD 영역>", "topics": ["세부 주제", ...]}}}`
+형식이며, 주제는 문제지에 이미 드러난 내용만 적는다(정답·원인 노출 금지).
+
 다 풀면 에이전트에게 "1회차 채점해줘"라고 요청한다.
 
 ## 채점 (에이전트)
 
-1. `grade.sh`를 실행한다. 문제별로 클러스터 상태(리소스 존재, spec 값,
+1. 시험 화면으로 풀었다면 `grade.json`·`finished.json`이 이미 있다.
+   클러스터가 그대로면 `grade.sh`를 다시 실행해 확인한다. 그 외에는
+   `grade.sh`를 실행한다. 문제별로 클러스터 상태(리소스 존재, spec 값,
    파드 Ready 여부 등)와 `answers/` 파일을 검사해 항목별 통과/실패를
    출력한다. 부분 점수는 항목 단위로 준다.
 2. 스크립트가 판단하기 어려운 부분(매니페스트 작성 방식, 불필요한
    리소스 등)은 에이전트가 클러스터와 답안 파일을 직접 보고 보완한다.
 3. `result.md`를 쓴다: 문제별 점수와 총점, 합격 여부, 틀린 항목의 원인,
    모범 풀이(명령/매니페스트), 관련 공식 문서 링크.
-4. `<cert>/README.md`의 회차 목록에 점수를 기록한다.
+4. `grade.json`을 최종 점수로 갱신해 시험 화면에 반영한다. 점수와
+   `result.md`는 커밋하지 않는다(개인 기록). `<cert>/README.md`의 회차
+   목록과 출제 범위 누적은 출제할 때 갱신한다.

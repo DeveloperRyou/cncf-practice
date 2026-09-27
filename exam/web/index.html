@@ -54,11 +54,52 @@
   .card .name { font-size: 16px; font-weight: 600; margin: 4px 0; }
   .card .meta { color: var(--muted); font-size: 13px; }
   .card .badge { display: inline-block; font-size: 11px; padding: 1px 6px; border-radius: 4px; border: 1px solid var(--ok); color: var(--ok); margin-left: 6px; }
+  .card.solved { border-color: var(--ok); }
+  .card.solved.fail { border-color: var(--danger); }
+  .card .badge.fail { border-color: var(--danger); color: var(--danger); }
+  .card .score { font-size: 12px; color: var(--muted); margin-top: 6px; font-variant-numeric: tabular-nums; }
+  .card .score b { color: var(--text); }
   .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 16px 0; }
   .status { font-size: 14px; color: var(--muted); }
   .status.ok { color: var(--ok); } .status.failed { color: var(--danger); }
   #prepLog { max-height: 320px; min-height: 120px; font: 12px/1.5 ui-monospace, monospace; white-space: pre-wrap; }
   .info { border: 1px solid var(--border); border-radius: 8px; padding: 4px 16px; margin-bottom: 20px; }
+  .note { border-left: 3px solid var(--flag); padding: 6px 12px; margin: 0 0 16px; color: var(--muted); font-size: 14px; }
+
+  /* --- result --- */
+  .summary { display: flex; gap: 24px; align-items: center; flex-wrap: wrap; padding: 16px 20px;
+    border: 1px solid var(--border); border-radius: 8px; background: var(--panel); margin-bottom: 20px; }
+  .summary .big { font: 700 40px/1 ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  .summary .big small { font-size: 18px; color: var(--muted); font-weight: 400; }
+  .verdict { font-weight: 700; padding: 2px 10px; border-radius: 4px; border: 1px solid; }
+  .verdict.pass { color: var(--ok); } .verdict.fail { color: var(--danger); }
+  .summary .facts { color: var(--muted); font-size: 13px; line-height: 1.7; }
+  .bar { height: 6px; background: var(--code); border-radius: 3px; overflow: hidden; position: relative; }
+  .bar > span { display: block; height: 100%; background: var(--ok); }
+  .bar.low > span { background: var(--danger); } .bar.mid > span { background: var(--flag); }
+  .bar .mark { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--muted); }
+  .result h3 { font-size: 15px; margin: 24px 0 8px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  table.domains { width: 100%; border-collapse: collapse; font-size: 14px; }
+  table.domains td { padding: 6px 8px; border-top: 1px solid var(--border); vertical-align: middle; }
+  table.domains td.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; width: 1%; }
+  table.domains td.barcell { width: 30%; }
+  .qcard { border: 1px solid var(--border); border-radius: 8px; margin-bottom: 12px; overflow: hidden; }
+  .qcard > summary { list-style: none; cursor: pointer; padding: 12px 16px; background: var(--panel); }
+  .qcard > summary::-webkit-details-marker { display: none; }
+  .qhead { display: flex; gap: 12px; align-items: baseline; }
+  .qhead .qn { font-weight: 700; }
+  .qhead .dom { color: var(--muted); font-size: 13px; }
+  .qhead .pts { margin-left: auto; font: 600 14px ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  .qcard .bar { margin-top: 8px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .chip { font-size: 12px; padding: 1px 8px; border-radius: 10px; background: var(--code); color: var(--muted); border: 1px solid var(--border); }
+  ul.items { list-style: none; margin: 0; padding: 4px 0; }
+  ul.items li { display: flex; gap: 10px; padding: 5px 16px; font-size: 14px; align-items: baseline; }
+  ul.items .mk { width: 16px; flex: none; font-weight: 700; }
+  ul.items .ok .mk { color: var(--ok); } ul.items .no .mk { color: var(--danger); }
+  ul.items .no .d { color: var(--muted); }
+  ul.items .p { margin-left: auto; color: var(--muted); font-size: 12px; white-space: nowrap; }
+  #gradeLog { max-height: 320px; font: 12px/1.5 ui-monospace, monospace; white-space: pre-wrap; }
 
   /* --- exam screen --- */
   #examView { flex: 1; display: flex; min-height: 0; }
@@ -142,8 +183,10 @@ cd cncf-practice
   <div class="row">
     <button id="prepBtn">Prepare environment</button>
     <button class="primary" id="startBtn" disabled>Start exam</button>
+    <button id="resultBtn" hidden>View last result →</button>
     <span class="status" id="prepStatus"></span>
   </div>
+  <p class="note" id="prevNote" hidden></p>
   <pre id="prepLog" hidden></pre>
   <p><a href="#/rounds">← Back to rounds</a></p>
 </div></section>
@@ -158,13 +201,19 @@ cd cncf-practice
   <section id="right"><iframe id="term" title="Terminal" allow="local-network-access; local-network; loopback-network; clipboard-read; clipboard-write"></iframe></section>
 </main>
 
-<!-- finished -->
-<section class="page" id="doneView" hidden><div class="inner">
-  <h2>Exam finished</h2>
+<!-- finished: grade + result -->
+<section class="page" id="doneView" hidden><div class="inner result">
+  <h2 id="doneTitle">Result</h2>
   <p class="sub" id="doneSub"></p>
-  <p>Ask the agent to grade it:</p>
-  <pre><code id="doneCmd"></code></pre>
-  <p><a href="#/rounds">← Back to rounds</a></p>
+  <div class="row"><span class="status" id="gradeStatus"></span></div>
+  <pre id="gradeLog" hidden></pre>
+  <div id="resultBody"></div>
+  <div class="row">
+    <button id="regradeBtn">Re-grade</button>
+    <button id="retakeBtn">Retake this round</button>
+    <a href="#/rounds">← Back to rounds</a>
+  </div>
+  <p class="sub">Re-grade checks the cluster and <code>answers/</code> as they are now. For explanations and model answers, ask the agent: <code id="doneCmd"></code></p>
 </div></section>
 
 <div id="toast"></div>
@@ -182,8 +231,11 @@ const store = {
 // otherwise (a deployed copy) it's on localhost. Override with ?api=.
 const LOCAL = ["localhost", "127.0.0.1"].includes(location.hostname);
 const API = new URLSearchParams(location.search).get("api") || (LOCAL ? "" : "http://localhost:8000");
-const API_VERSION = 1;
+const API_VERSION = 2;
 const api = async (path, opts) => { const r = await fetch(API + path, { cache: "no-store", ...opts }); return r.json(); };
+const esc = (t) => String(t ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const post = (path, body) => api(path, { method: "POST", headers: { "Content-Type": "application/json", "X-Exam": "1" }, body: JSON.stringify(body) });
+const roundName = (round) => round.split("/")[1].replace("round-", "Round ");
 const md = (text) => window.marked ? marked.parse(text) : `<pre>${text.replace(/[&<]/g, c => ({ "&": "&amp;", "<": "&lt;" })[c])}</pre>`;
 
 let env = null, roundList = [], poller = null, ticker = null;
@@ -265,9 +317,13 @@ async function viewRounds() {
     b.className = "card";
     const session = store.get(`session:${r.round}`, null);
     const state = session && !session.endedAt ? " · in progress" : "";
+    const sc = r.score;
+    if (sc) b.classList.add("solved", ...(sc.passed ? [] : ["fail"]));
+    b.title = sc ? "Solved -- click to retake" : "";
     b.innerHTML = `<div class="cert">${r.cert}</div>
-      <div class="name">${r.round.split("/")[1].replace("round-", "Round ")}${r.graded ? '<span class="badge">graded</span>' : ""}</div>
-      <div class="meta">${r.questions} questions · ${r.minutes} min${state}</div>`;
+      <div class="name">${roundName(r.round)}${sc ? `<span class="badge${sc.passed ? "" : " fail"}">${sc.passed ? "passed" : "failed"}</span>` : r.graded ? '<span class="badge">graded</span>' : ""}</div>
+      <div class="meta">${r.questions} questions · ${r.minutes} min${state}</div>
+      ${sc ? `<div class="score"><b>${sc.total}</b> / ${sc.max} · ${new Date(sc.gradedAt).toLocaleDateString()}${r.attempts ? ` · ${r.attempts + 1} attempts` : ""} · retake</div>` : ""}`;
     b.onclick = () => location.hash = `#/prepare/${r.round}`;
     $("cards").appendChild(b);
   }
@@ -278,26 +334,35 @@ async function viewRounds() {
 async function viewPrepare(round) {
   show("prepView", 2);
   const sheet = await loadSheet(round);
-  const meta = (roundList.length ? roundList : await api("/api/rounds")).find(r => r.round === round) || {};
+  roundList = await api("/api/rounds");  // fresh: a grade or archive may have happened since
+  const meta = roundList.find(r => r.round === round) || {};
   show("prepView", 2, sheet.title);
   $("prepTitle").textContent = sheet.title;
   $("prepSub").textContent = `${sheet.questions.length} questions · ${meta.minutes || 40} minutes`;
   // The sheet's own "before you start" commands are what the Prepare button runs.
   $("prepInfo").innerHTML = md(sheet.info.replace(/## Before you start[\s\S]*?(?=\n## |$)/, ""));
   wireCopy($("prepInfo"));
+  const prev = meta.score;
+  $("prevNote").hidden = !(prev || meta.finished);
+  $("resultBtn").hidden = !(prev || meta.finished);
+  $("resultBtn").onclick = () => location.hash = `#/result/${round}`;
+  $("prevNote").innerHTML = prev
+    ? `Already solved: <b>${prev.total} / ${prev.max}</b>. Preparing archives its answers and result to <code>${round}/attempts/</code> and starts a clean retake.`
+    : `Preparing archives the previous attempt's answers to <code>${round}/attempts/</code>.`;
 
   const render = (job) => {
     const mine = job.round === round;
     const running = job.state === "running";
+    if (mine && job.kind === "prepare") $("prevNote").hidden = $("resultBtn").hidden = true;  // archived
     $("prepBtn").disabled = running;
     $("prepBtn").textContent = mine && job.state === "ok" ? "Prepare again" : "Prepare environment";
-    $("startBtn").disabled = !(mine && job.state === "ok");
+    $("startBtn").disabled = !(mine && job.kind === "prepare" && job.state === "ok");
     $("prepLog").hidden = !(mine || running) || !job.log;
     $("prepLog").textContent = job.log;
     $("prepLog").scrollTop = $("prepLog").scrollHeight;
     const s = $("prepStatus");
     s.className = "status";
-    if (running && !mine) s.textContent = `Another round (${job.round}) is being prepared…`;
+    if (running && (!mine || job.kind !== "prepare")) s.textContent = `Busy: ${job.kind} of ${job.round}…`;
     else if (running) s.textContent = "Preparing… (a fresh cluster takes about a minute)";
     else if (mine && job.state === "ok") { s.textContent = "Environment ready."; s.className = "status ok"; }
     else if (mine && job.state === "failed") { s.textContent = "Setup failed -- see the log."; s.className = "status failed"; }
@@ -308,8 +373,7 @@ async function viewPrepare(round) {
   if (render(await api("/api/job"))) poller = setInterval(poll, 1000);
 
   $("prepBtn").onclick = async () => {
-    const res = await api("/api/prepare", { method: "POST", headers: { "Content-Type": "application/json", "X-Exam": "1" },
-      body: JSON.stringify({ round, recreate: $("recreate").checked }) });
+    const res = await post("/api/prepare", { round, recreate: $("recreate").checked });
     if (res.error) { toast(res.error); return; }
     render(res); clearInterval(poller); poller = setInterval(poll, 1000);
   };
@@ -375,19 +439,91 @@ async function viewExam(round) {
     $("timer").classList.toggle("low", ms < 5 * 60000);
   };
   tick(); ticker = setInterval(tick, 500);
-  $("endBtn").onclick = () => {
-    if (!confirm("End the exam? The timer stops and you can't return to it.")) return;
+  $("endBtn").onclick = async () => {
+    if (!confirm("End the exam? The timer stops, the attempt is graded, and you can't return to it.")) return;
     session.endedAt = Date.now(); save();
-    location.hash = `#/done/${round}`;
+    const res = await post("/api/grade", { round, session });
+    if (res.error) toast(res.error);
+    location.hash = `#/result/${round}`;
   };
 }
 
-function viewDone(round) {
-  const session = store.get(`session:${round}`, null);
-  show("doneView", -1, "Exam finished");
-  const used = session && session.endedAt ? Math.round((session.endedAt - session.startedAt) / 60000) : null;
-  $("doneSub").textContent = used === null ? round : `${round} -- ${used} min used of ${session.minutes}.`;
+// --- 6. result --------------------------------------------------------------
+async function viewResult(round) {
+  const sheet = await loadSheet(round).catch(() => ({ title: round, questions: [] }));
+  show("doneView", -1, `${sheet.title} -- Result`);
+  $("doneTitle").textContent = sheet.title;
   $("doneCmd").textContent = `${round} 채점해줘`;
+  const weights = Object.fromEntries(sheet.questions.map(q => [q.n, q.weight]));
+
+  const render = (r) => {
+    const job = r.job, mine = job.round === round && job.kind === "grade";
+    const running = mine && job.state === "running";
+    const f = r.finished, g = r.grade;
+    const facts = [];
+    if (f) facts.push(`Finished ${new Date(f.endedAt).toLocaleString()}` +
+      (f.usedSeconds != null ? ` · ${Math.round(f.usedSeconds / 60)} of ${f.minutes} min used` : ""));
+    if (g) facts.push(`Graded ${new Date(g.gradedAt).toLocaleString()}`);
+    if (f && f.flagged && f.flagged.length) facts.push(`Flagged: Q${f.flagged.join(", Q")}`);
+    $("doneSub").textContent = f ? "Exam finished." : g ? "" : "Not finished or graded yet.";
+
+    const st = $("gradeStatus");
+    st.className = "status";
+    if (running) st.textContent = "Grading… (network checks take up to a minute)";
+    else if (mine && job.state === "failed") { st.textContent = "Grading failed -- see the log."; st.className = "status failed"; }
+    else if (job.state === "running") st.textContent = `Busy: ${job.kind} of ${job.round}…`;
+    else st.textContent = "";
+    $("gradeLog").hidden = !(running || (mine && job.state === "failed"));
+    $("gradeLog").textContent = mine ? job.log : "";
+    $("regradeBtn").disabled = $("retakeBtn").disabled = job.state === "running";
+    $("resultBody").innerHTML = g && !running ? resultHtml(g, weights, facts) : "";
+    return job.state === "running";
+  };
+  const poll = async () => { if (!render(await api(`/api/result?round=${encodeURIComponent(round)}`))) clearInterval(poller); };
+  if (render(await api(`/api/result?round=${encodeURIComponent(round)}`))) poller = setInterval(poll, 1000);
+
+  $("regradeBtn").onclick = async () => {
+    const res = await post("/api/grade", { round });
+    if (res.error) { toast(res.error); return; }
+    clearInterval(poller); await poll(); poller = setInterval(poll, 1000);
+  };
+  $("retakeBtn").onclick = () => location.hash = `#/prepare/${round}`;
+}
+
+function bar(got, max, mark) {
+  const pct = max ? Math.round(got * 100 / max) : 0;
+  const cls = pct >= 66 ? "" : pct >= 40 ? " mid" : " low";
+  return `<div class="bar${cls}"><span style="width:${pct}%"></span>${mark ? `<i class="mark" style="left:${mark}%"></i>` : ""}</div>`;
+}
+
+function resultHtml(g, weights, facts) {
+  const pct = g.max ? Math.round(g.total * 100 / g.max) : 0;
+  let h = `<div class="summary">
+    <div class="big">${g.total}<small> / ${g.max}</small></div>
+    <span class="verdict ${g.passed ? "pass" : "fail"}">${g.passed ? "PASS" : "FAIL"}</span>
+    <div class="facts">${pct}% · pass mark ${g.passMark}%<br>${facts.map(esc).join("<br>")}</div>
+    <div style="flex-basis:100%">${bar(g.total, g.max, g.passMark)}</div>
+  </div>`;
+  if (g.domains && g.domains.length) {
+    h += `<h3>By domain</h3><table class="domains">` + g.domains.map(d =>
+      `<tr><td>${esc(d.domain)} <span class="dom" style="color:var(--muted);font-size:12px">Q${d.questions.join(", Q")}</span></td>
+       <td class="barcell">${bar(d.got, d.max)}</td><td class="num">${d.got} / ${d.max}</td></tr>`).join("") + `</table>`;
+  }
+  h += `<h3>By question</h3>`;
+  for (const q of g.questions) {
+    const full = q.got === q.max;
+    h += `<details class="qcard"${full ? "" : " open"}><summary>
+      <div class="qhead"><span class="qn">Question ${esc(q.n)}</span>
+        <span class="dom">${weights[q.n] ? `${weights[q.n]}% · ` : ""}${esc(q.domain || "")}</span>
+        <span class="pts">${q.got} / ${q.max}</span></div>
+      ${bar(q.got, q.max)}
+      ${q.topics && q.topics.length ? `<div class="chips">${q.topics.map(t => `<span class="chip">${esc(t)}</span>`).join("")}</div>` : ""}
+    </summary><ul class="items">` + q.items.map(i =>
+      `<li class="${i.pass ? "ok" : "no"}"><span class="mk">${i.pass ? "✓" : "✗"}</span><span class="d">${esc(i.desc)}</span>
+       <span class="p">${i.pass ? i.points : 0} / ${i.points}</span></li>`).join("") + `</ul></details>`;
+  }
+  h += `<details><summary class="sub" style="cursor:pointer">Raw grade.sh output</summary><pre>${esc(g.output)}</pre></details>`;
+  return h;
 }
 
 // --- helpers ----------------------------------------------------------------
@@ -432,7 +568,7 @@ async function route() {
     if (view === "rounds") await viewRounds();
     else if (view === "prepare" && round) await viewPrepare(round);
     else if (view === "exam" && round) await viewExam(round);
-    else if (view === "done" && round) viewDone(round);
+    else if ((view === "result" || view === "done") && round) await viewResult(round);
     else await viewSetup();
   } catch (e) {
     toast(String(e.message || e));

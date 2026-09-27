@@ -4,8 +4,9 @@
 The UI (exam/web/) is either served from here or deployed as a static site
 (e.g. Cloudflare Pages); either way it talks to this server for everything
 local: the exam sheets in this clone, the repo's freshness, and the fixed
-prepare step (down.sh, up.sh, <round>/setup.sh). It binds to 127.0.0.1 and
-only runs those scripts -- never arbitrary commands.
+prepare step (down.sh, up.sh, <round>/setup.sh), and grading
+(<round>/grade.sh, results saved to <round>/grade.json). It binds to
+127.0.0.1 and only runs those scripts -- never arbitrary commands.
 
 Browser-side guards: the Host header must be localhost (defeats DNS
 rebinding), and POSTs must carry X-Exam, which forces a CORS preflight that
@@ -21,6 +22,7 @@ import subprocess
 import os
 import threading
 import time
+from datetime import datetime, timezone
 from urllib.parse import parse_qs
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -31,39 +33,131 @@ WEB = ROOT / "exam" / "web"
 # Origins of deployed copies of the UI allowed to call this server.
 ORIGINS = {o.strip().rstrip("/") for o in os.environ.get(
     "EXAM_ORIGINS", "https://cncf-practice.developerryou.workers.dev").split(",") if o.strip()}
-API_VERSION = 1
+API_VERSION = 2
+PASS_MARK = 66
+# Per-attempt files in a round directory; a new prepare archives them.
+ATTEMPT_FILES = ("finished.json", "grade.json")
+ITEM_RE = re.compile(r"^\s*(PASS|FAIL)\s+\[Q(\d+)\]\s+(\d+)\s+(.*)$")
+SUM_RE = re.compile(r"^Q(\d+)\s+(\d+)\s*/\s*(\d+)\s*$")
+
+
+def now_iso():
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def read_json(path):
+    try:
+        return json.loads(path.read_text())
+    except (OSError, ValueError):
+        return None
+
+
+def write_json(path, obj):
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(obj, indent=2, ensure_ascii=False) + "\n")
+    tmp.replace(path)
 
 
 class Job:
+    """One background script at a time (prepare or grade), with its log."""
+
     def __init__(self):
         self.lock = threading.Lock()
-        self.state, self.round, self.log = "idle", None, collections.deque(maxlen=500)
+        self.state, self.kind, self.round, self.log = "idle", None, None, collections.deque(maxlen=500)
 
     def snapshot(self):
         with self.lock:
-            return {"state": self.state, "round": self.round, "log": "".join(self.log)}
+            return {"state": self.state, "kind": self.kind, "round": self.round, "log": "".join(self.log)}
 
-    def start(self, rnd, recreate):
+    def start(self, kind, rnd, script, on_done=None):
         with self.lock:
             if self.state == "running":
                 return False
-            self.state, self.round = "running", rnd
+            self.state, self.kind, self.round = "running", kind, rnd
             self.log.clear()
-        steps = (["./scripts/down.sh", "./scripts/up.sh"] if recreate else ["./scripts/up.sh"])
-        steps.append(f"./{rnd}/setup.sh")
-        script = "set -e\n" + "\n".join(f"echo '$ {s}'; {s}" for s in steps)
-        threading.Thread(target=self._run, args=(script,), daemon=True).start()
+        threading.Thread(target=self._run, args=(script, on_done), daemon=True).start()
         return True
 
-    def _run(self, script):
+    def _run(self, script, on_done):
         proc = subprocess.Popen(["bash", "-c", script], cwd=ROOT, text=True,
                                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         for line in proc.stdout:
             with self.lock:
                 self.log.append(line)
         ok = proc.wait() == 0
+        if on_done:
+            try:
+                ok = on_done(ok, self.snapshot()["log"]) and ok
+            except Exception as e:  # keep the job from hanging in "running"
+                with self.lock:
+                    self.log.append(f"\n{type(e).__name__}: {e}\n")
+                ok = False
         with self.lock:
             self.state = "ok" if ok else "failed"
+
+
+def prepare_script(rnd, recreate):
+    steps = (["./scripts/down.sh", "./scripts/up.sh"] if recreate else ["./scripts/up.sh"])
+    steps.append(f"./{rnd}/setup.sh")
+    return "set -e\n" + "\n".join(f"echo '$ {s}'; {s}" for s in steps)
+
+
+def archive_attempt(rnd):
+    """Move the previous attempt's answers and results into
+    <round>/attempts/<timestamp>/ so a retake starts clean -- down.sh only
+    wipes the cluster, not the answer files. Returns the archive path."""
+    d = ROOT / rnd
+    answers = d / "answers"
+    moved = [p for p in answers.iterdir() if p.name != ".gitkeep"] if answers.is_dir() else []
+    moved += [d / f for f in ATTEMPT_FILES if (d / f).exists()]
+    if not moved:
+        return None
+    dest = d / "attempts" / datetime.now().strftime("%Y%m%d-%H%M%S")
+    (dest / "answers").mkdir(parents=True)
+    for p in moved:
+        shutil.move(str(p), str(dest / ("answers" if p.parent == answers else "") / p.name))
+    return dest.relative_to(ROOT)
+
+
+def parse_grade(output, meta):
+    """grade.sh's output -> per-question items and scores, annotated with the
+    domain/topics from the round's meta.json."""
+    qs = {}
+    for line in output.splitlines():
+        if m := ITEM_RE.match(line):
+            q = qs.setdefault(m[2], {"items": []})
+            q["items"].append({"pass": m[1] == "PASS", "points": int(m[3]), "desc": m[4].strip()})
+        elif m := SUM_RE.match(line.strip()):
+            qs.setdefault(m[1], {"items": []}).update(got=int(m[2]), max=int(m[3]))
+    questions, domains = [], {}
+    for n in sorted(qs, key=int):
+        q = qs[n]
+        q.setdefault("got", sum(i["points"] for i in q["items"] if i["pass"]))
+        q.setdefault("max", sum(i["points"] for i in q["items"]))
+        info = (meta.get("questions") or {}).get(n, {})
+        questions.append({"n": n, "domain": info.get("domain"), "topics": info.get("topics", []), **q})
+        if info.get("domain"):
+            dom = domains.setdefault(info["domain"], {"domain": info["domain"], "got": 0, "max": 0, "questions": []})
+            dom["got"] += q["got"]; dom["max"] += q["max"]; dom["questions"].append(n)
+    total = sum(q["got"] for q in questions)
+    total_max = sum(q["max"] for q in questions)
+    return {
+        "total": total, "max": total_max, "passMark": PASS_MARK,
+        "passed": total_max > 0 and total * 100 >= PASS_MARK * total_max,
+        "questions": questions, "domains": list(domains.values()),
+    }
+
+
+def grade(job, rnd):
+    d = ROOT / rnd
+
+    def done(ok, log):
+        result = parse_grade(log, read_json(d / "meta.json") or {})
+        if not result["questions"]:
+            return False
+        write_json(d / "grade.json", {"round": rnd, "gradedAt": now_iso(), **result, "output": log})
+        return True
+    return job.start("grade", rnd, f"./{rnd}/grade.sh", done)
 
 
 def rounds():
@@ -73,13 +167,18 @@ def rounds():
         text = sheet.read_text()
         title = next((l[2:] for l in text.splitlines() if l.startswith("# ")), rnd)
         minutes = re.search(r"(\d+)\s*minutes", text)
+        g = read_json(sheet.parent / "grade.json")
         out.append({
             "round": rnd,
             "cert": sheet.parent.parent.name,
             "title": title,
             "questions": len(re.findall(r"^## Question \d+", text, re.M)),
             "minutes": int(minutes.group(1)) if minutes else 40,
-            "graded": (sheet.parent / "result.md").exists(),
+            "graded": (sheet.parent / "result.md").exists() or g is not None,
+            "finished": (sheet.parent / "finished.json").exists(),
+            "score": {"total": g["total"], "max": g["max"], "passed": g["passed"],
+                      "gradedAt": g["gradedAt"]} if g else None,
+            "attempts": len(list((sheet.parent / "attempts").glob("*/"))),
         })
     return out
 
@@ -200,6 +299,15 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_json(rounds())
         elif path == "/api/job":
             self.send_json(self.job.snapshot())
+        elif path == "/api/result":
+            rnd = parse_qs(query).get("round", [""])[0]
+            if not ROUND_RE.match(rnd) or not (ROOT / rnd / "README.md").is_file():
+                return self.send_json({"error": "unknown round"}, 404)
+            self.send_json({
+                "job": self.job.snapshot(),
+                "finished": read_json(ROOT / rnd / "finished.json"),
+                "grade": read_json(ROOT / rnd / "grade.json"),
+            })
         elif path == "/api/sheet":
             rnd = parse_qs(query).get("round", [""])[0]
             sheet = ROOT / rnd / "README.md"
@@ -212,7 +320,7 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_error(404)
 
     def do_POST(self):
-        if (not self.host_ok() or self.path != "/api/prepare"
+        if (not self.host_ok() or self.path not in ("/api/prepare", "/api/grade")
                 or self.headers.get("X-Exam") != "1" or not self.allowed_origin()):
             return self.send_error(403)
         try:
@@ -220,10 +328,32 @@ class Handler(SimpleHTTPRequestHandler):
         except ValueError:
             return self.send_error(400)
         rnd = str(req.get("round", ""))
-        if not ROUND_RE.match(rnd) or not (ROOT / rnd / "setup.sh").is_file():
+        script = "setup.sh" if self.path == "/api/prepare" else "grade.sh"
+        if not ROUND_RE.match(rnd) or not (ROOT / rnd / script).is_file():
             return self.send_json({"error": "unknown round"}, 400)
-        if not self.job.start(rnd, bool(req.get("recreate", True))):
-            return self.send_json({"error": "a prepare job is already running"}, 409)
+        if self.job.snapshot()["state"] == "running":
+            return self.send_json({"error": "another prepare/grade job is already running"}, 409)
+
+        if self.path == "/api/prepare":
+            archived = archive_attempt(rnd)
+            self.job.start("prepare", rnd, prepare_script(rnd, bool(req.get("recreate", True))))
+            if archived:
+                with self.job.lock:
+                    self.job.log.appendleft(f"previous attempt archived to {archived}/\n")
+        else:
+            # The exam UI's End button: mark the attempt finished, then grade.
+            s = req.get("session")
+            if isinstance(s, dict):
+                num = lambda k: s.get(k) if isinstance(s.get(k), (int, float)) else None
+                started, ended = num("startedAt"), num("endedAt")
+                iso = lambda ms: datetime.fromtimestamp(ms / 1000, timezone.utc).isoformat(timespec="seconds") if ms else None
+                write_json(ROOT / rnd / "finished.json", {
+                    "round": rnd, "startedAt": iso(started), "endedAt": iso(ended) or now_iso(),
+                    "minutes": num("minutes"),
+                    "usedSeconds": round((ended - started) / 1000) if started and ended else None,
+                    "flagged": sorted(str(k) for k, v in (s.get("flags") or {}).items() if v),
+                })
+            grade(self.job, rnd)
         self.send_json(self.job.snapshot())
 
 

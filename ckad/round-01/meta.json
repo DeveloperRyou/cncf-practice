@@ -1,0 +1,24 @@
+{
+  "questions": {
+    "1": {
+      "domain": "Application Design and Build",
+      "topics": ["Job completions / parallelism / backoffLimit", "Init container", "emptyDir shared volume", "Container logs to file"]
+    },
+    "2": {
+      "domain": "Application Deployment",
+      "topics": ["kubectl rollout undo", "RollingUpdate maxSurge / maxUnavailable", "Image update with change-cause", "kubectl rollout history"]
+    },
+    "3": {
+      "domain": "Application Observability and Maintenance",
+      "topics": ["readinessProbe httpGet", "livenessProbe tcpSocket", "Troubleshooting a crashing pod (exit code)"]
+    },
+    "4": {
+      "domain": "Application Environment, Configuration and Security",
+      "topics": ["ConfigMap (literal + file key)", "Secret (generic)", "ServiceAccount automount", "env valueFrom configMapKeyRef / secretKeyRef", "ConfigMap volume with items", "securityContext (runAs, capabilities, readOnlyRootFilesystem)", "Resource requests / limits"]
+    },
+    "5": {
+      "domain": "Services and Networking",
+      "topics": ["Service → endpoints troubleshooting", "NetworkPolicy podSelector / namespaceSelector", "NetworkPolicy port restriction"]
+    }
+  }
+}
