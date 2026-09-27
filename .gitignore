@@ -1,0 +1,14 @@
+# Exam attempts are personal: answers, results (finished/grade.json,
+# result.md, attempts/), and scratch files in a round directory stay local.
+# Only the round's own files are tracked.
+/*/round-*/*
+!/*/round-*/README.md
+!/*/round-*/setup.sh
+!/*/round-*/grade.sh
+!/*/round-*/meta.json
+!/*/round-*/answers/
+/*/round-*/answers/*
+!/*/round-*/answers/.gitkeep
+
+__pycache__/
+.playwright-mcp/
