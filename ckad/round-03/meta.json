@@ -1,0 +1,35 @@
+{
+  "questions": {
+    "1": {
+      "domain": "Application Design and Build",
+      "topics": [
+        "Native sidecar container",
+        "emptyDir shared volume",
+        "Container logs to file"
+      ]
+    },
+    "2": {
+      "domain": "Application Deployment",
+      "topics": [
+        "Helm uninstall / rollback / install with values",
+        "helm history"
+      ]
+    },
+    "3": {
+      "domain": "Application Observability and Maintenance",
+      "topics": [
+        "Container exit code and termination reason",
+        "kubectl logs --previous",
+        "ConfigMap volume troubleshooting"
+      ]
+    },
+    "4": {
+      "domain": "Services and Networking",
+      "topics": [
+        "ClusterIP with named targetPort",
+        "TLS Secret",
+        "Ingress with TLS and Prefix paths"
+      ]
+    }
+  }
+}

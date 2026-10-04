@@ -1,0 +1,35 @@
+{
+  "questions": {
+    "1": {
+      "domain": "Application Environment, Configuration and Security",
+      "topics": [
+        "ServiceAccount / Role / RoleBinding",
+        "kubectl auth can-i",
+        "Pod template serviceAccountName / automountServiceAccountToken"
+      ]
+    },
+    "2": {
+      "domain": "Application Design and Build",
+      "topics": [
+        "PersistentVolumeClaim",
+        "Downward API env",
+        "Shared volume read-only mount"
+      ]
+    },
+    "3": {
+      "domain": "Application Deployment",
+      "topics": [
+        "Kustomize overlay (namespace, namePrefix, labels, images, replicas)",
+        "kubectl apply -k"
+      ]
+    },
+    "4": {
+      "domain": "Services and Networking",
+      "topics": [
+        "NetworkPolicy troubleshooting",
+        "Default deny + allow policy",
+        "podSelector / namespaceSelector"
+      ]
+    }
+  }
+}

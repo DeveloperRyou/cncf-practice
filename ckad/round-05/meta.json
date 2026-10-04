@@ -1,0 +1,35 @@
+{
+  "questions": {
+    "1": {
+      "domain": "Application Design and Build",
+      "topics": [
+        "Job completions / parallelism / backoffLimit / activeDeadlineSeconds",
+        "Init container",
+        "emptyDir shared volume"
+      ]
+    },
+    "2": {
+      "domain": "Application Environment, Configuration and Security",
+      "topics": [
+        "ResourceQuota / LimitRange (default, max)",
+        "ServiceAccount automount",
+        "securityContext (pod and container level)"
+      ]
+    },
+    "3": {
+      "domain": "Application Deployment",
+      "topics": [
+        "Rollout stuck on readinessProbe",
+        "change-cause",
+        "kubectl rollout history"
+      ]
+    },
+    "4": {
+      "domain": "Services and Networking",
+      "topics": [
+        "ClusterIP port / targetPort",
+        "NetworkPolicy egress with DNS"
+      ]
+    }
+  }
+}
