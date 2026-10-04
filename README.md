@@ -23,6 +23,7 @@ killer.sh 형식의 모의고사를 출제·채점한다.
 | cgroup | v2 전용 |
 | kubectl | v1.37.1 |
 | kind | v0.33.0 (노드 이미지 `kindest/node:v1.37.0`) |
+| helm | v4.3.0 |
 | ttyd | 1.7.7 |
 
 ## 사전 준비
@@ -76,7 +77,7 @@ Desktop의 리눅스 VM이 cgroup v2라 WSL 같은 설정은 필요 없다.
 ## 클러스터 띄우기
 
 ```bash
-./scripts/install.sh   # kubectl, kind, ttyd를 ~/.local/bin에 설치 (체크섬 검증, macOS는 ttyd 소스 빌드)
+./scripts/install.sh   # kubectl, kind, helm, ttyd를 ~/.local/bin에 설치 (체크섬 검증, macOS는 ttyd 소스 빌드)
 ./scripts/up.sh        # 클러스터 생성 + 파드를 띄울 수 있을 때까지 대기
 ```
 
@@ -101,7 +102,7 @@ kubectl delete pod nginx
 
 옵션:
 
-- `KUBECTL_VERSION=v1.37.1 KIND_VERSION=v0.33.0 TTYD_VERSION=1.7.7 ./scripts/install.sh` --
+- `KUBECTL_VERSION=v1.37.1 KIND_VERSION=v0.33.0 HELM_VERSION=v4.3.0 TTYD_VERSION=1.7.7 ./scripts/install.sh` --
   버전 고정 (생략하면 최신 stable)
 - `CLUSTER_NAME=foo ./scripts/up.sh` -- 클러스터 이름 (기본 `cncf`)
 

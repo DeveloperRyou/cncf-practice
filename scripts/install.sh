@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Install kubectl, kind and ttyd into ~/.local/bin (no sudo), verifying checksums.
-# Pin versions with KUBECTL_VERSION=v1.37.1 / KIND_VERSION=v0.33.0 / TTYD_VERSION=1.7.7.
+# Install kubectl, kind, helm and ttyd into ~/.local/bin (no sudo), verifying checksums.
+# Pin versions with KUBECTL_VERSION=v1.37.1 / KIND_VERSION=v0.33.0 / HELM_VERSION=v4.3.0 / TTYD_VERSION=1.7.7.
 # Works on Linux (WSL) and macOS. On macOS, Homebrew supplies bash 4+ and jq
 # (grade.sh needs both), and ttyd -- which ships no macOS binary -- is built
 # from source with TTYD_VERSION ignored (brew's ttyd formula pulls in a python
@@ -24,6 +24,10 @@ if [ -z "${KIND_VERSION:-}" ]; then
   # Fetch fully before grepping: grep -m1 closing the pipe early makes curl fail under pipefail.
   release_json="$(curl -fsSL https://api.github.com/repos/kubernetes-sigs/kind/releases/latest)"
   KIND_VERSION="$(grep -m1 '"tag_name"' <<<"$release_json" | cut -d'"' -f4)"
+fi
+if [ -z "${HELM_VERSION:-}" ]; then
+  release_json="$(curl -fsSL https://api.github.com/repos/helm/helm/releases/latest)"
+  HELM_VERSION="$(grep -m1 '"tag_name"' <<<"$release_json" | cut -d'"' -f4)"
 fi
 if [ "$OS" = linux ] && [ -z "${TTYD_VERSION:-}" ]; then
   release_json="$(curl -fsSL https://api.github.com/repos/tsl0922/ttyd/releases/latest)"
@@ -49,6 +53,14 @@ echo "kind $KIND_VERSION"
 curl -fsSLo "kind-$OS-$ARCH" "https://kind.sigs.k8s.io/dl/$KIND_VERSION/kind-$OS-$ARCH"
 curl -fsSL "https://kind.sigs.k8s.io/dl/$KIND_VERSION/kind-$OS-$ARCH.sha256sum" | sha256_check
 install -m 0755 "kind-$OS-$ARCH" "$BIN_DIR/kind"
+
+# helm is on the CKAD curriculum (Application Deployment).
+echo "helm $HELM_VERSION"
+HELM_TGZ="helm-$HELM_VERSION-$OS-$ARCH.tar.gz"
+curl -fsSLo "$HELM_TGZ" "https://get.helm.sh/$HELM_TGZ"
+echo "$(curl -fsSL "https://get.helm.sh/$HELM_TGZ.sha256sum" | cut -d' ' -f1)  $HELM_TGZ" | sha256_check
+tar -xzf "$HELM_TGZ" "$OS-$ARCH/helm"
+install -m 0755 "$OS-$ARCH/helm" "$BIN_DIR/helm"
 
 # ttyd serves the exam UI's terminal (scripts/exam.sh).
 if [ "$OS" = darwin ]; then
@@ -96,4 +108,5 @@ case ":$PATH:" in
 esac
 "$BIN_DIR/kubectl" version --client
 "$BIN_DIR/kind" version
+"$BIN_DIR/helm" version --short
 "$BIN_DIR/ttyd" --version
