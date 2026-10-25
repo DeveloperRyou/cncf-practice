@@ -3,6 +3,7 @@
 # solve it with the questions on the left and a browser terminal (ttyd) on
 # the right. Both servers bind to 127.0.0.1 only, so they're reachable from
 # this machine (and Windows via WSL localhost forwarding) but not the network.
+# Works on WSL and macOS.
 #   ./scripts/exam.sh
 set -euo pipefail
 
@@ -11,6 +12,14 @@ WEB_PORT="${WEB_PORT:-8000}"
 TERM_PORT="${TERM_PORT:-7681}"
 
 command -v ttyd >/dev/null || { echo "ttyd not found -- run ./scripts/install.sh" >&2; exit 1; }
+# grade.sh needs bash 4+ (associative arrays) and jq. macOS ships bash 3.2, so
+# put Homebrew's bash first on PATH for the terminal and the servers' scripts.
+if [ "$(uname -s)" = Darwin ] && command -v brew >/dev/null; then
+  PATH="$(brew --prefix)/bin:$PATH"
+  export PATH
+fi
+[ "$(bash -c 'echo ${BASH_VERSINFO[0]}')" -ge 4 ] || { echo "bash 4+ not found -- run ./scripts/install.sh" >&2; exit 1; }
+command -v jq >/dev/null || { echo "jq not found -- run ./scripts/install.sh" >&2; exit 1; }
 
 pids=()
 trap 'kill "${pids[@]}" 2>/dev/null' EXIT INT TERM

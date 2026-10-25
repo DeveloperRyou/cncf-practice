@@ -5,7 +5,12 @@ set -euo pipefail
 NAME="${CLUSTER_NAME:-cncf}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
-docker info >/dev/null 2>&1 || { echo "Docker is not reachable -- start Docker Desktop (WSL integration on)." >&2; exit 1; }
+if ! docker info >/dev/null 2>&1; then
+  hint="start Docker Desktop"
+  [ "$(uname -s)" = Linux ] && hint="$hint (WSL integration on)"
+  echo "Docker is not reachable -- $hint." >&2
+  exit 1
+fi
 
 if kind get clusters | grep -qx "$NAME"; then
   echo "cluster '$NAME' already exists"

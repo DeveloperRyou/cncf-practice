@@ -82,7 +82,7 @@ README.md, setup.sh, grade.sh, meta.json, answers/.gitkeep뿐이다.
 ```
 
 실제 시험처럼 풀려면 `./scripts/exam.sh`로 시험 화면을 띄운다. 회차 선택,
-환경 준비(위 세 명령), 타이머, 왼쪽 문제지·오른쪽 WSL 터미널을 한 화면에서
+환경 준비(위 세 명령), 타이머, 왼쪽 문제지·오른쪽 로컬 터미널을 한 화면에서
 진행한다. 화면은 문제지의 `# 제목`, `NN minutes`, `## Question N (W%)`
 제목을 파싱하므로 이 형식을 지킨다.
 

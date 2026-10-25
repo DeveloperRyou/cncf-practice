@@ -152,13 +152,13 @@
 <section class="page" id="setupView" hidden><div class="inner">
   <div class="steps"></div>
   <h2>Environment</h2>
-  <p class="sub">The exam runs against your local kind cluster through a terminal served from WSL.</p>
+  <p class="sub">The exam runs against your local kind cluster through a terminal served from your machine (WSL or macOS).</p>
   <ul class="checks" id="checks"></ul>
   <div id="onboard" hidden>
-    <p>No local exam server found at <code id="apiBase"></code>. In WSL:</p>
+    <p>No local exam server found at <code id="apiBase"></code>. In WSL or a macOS terminal:</p>
     <pre><code>git clone https://github.com/DeveloperRyou/cncf-practice.git   # first time only
 cd cncf-practice
-./scripts/install.sh   # kubectl, kind, ttyd -- first time only
+./scripts/install.sh   # kubectl, kind, ttyd (+ bash, jq on macOS) -- first time only
 ./scripts/exam.sh      # keep it running while you use this page</code></pre>
     <p class="sub">If the browser asks to allow access to devices on your local network, allow it -- that is how this page reaches the server and terminal on localhost.</p>
   </div>
@@ -289,7 +289,7 @@ async function viewSetup() {
         ["Local exam server", "ok", env.root],
         ["Repository", ...repo],
         ["Terminal (ttyd)", env.terminal ? "ok" : "fail", env.terminal ? "ready" : "restart <code>./scripts/exam.sh</code>"],
-        ["Docker", env.docker ? "ok" : "fail", env.docker ? "ready" : "start Docker Desktop (WSL integration on)"],
+        ["Docker", env.docker ? "ok" : "fail", env.docker ? "ready" : "start Docker Desktop (on WSL: WSL integration on)"],
         ["kind", env.kind ? "ok" : "fail", env.kind ? "ready" : install],
         ["kubectl", env.kubectl ? "ok" : "fail", env.kubectl ? "ready" : install],
       ];

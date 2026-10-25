@@ -1,7 +1,7 @@
 # cncf-practice
 
-CNCF 자격증(CKAD 등) 실기 연습용 저장소. WSL2(Ubuntu) + Docker Desktop 위에
-[kind](https://kind.sigs.k8s.io/)로 단일 노드 클러스터를 띄우고, AI 에이전트가
+CNCF 자격증(CKAD 등) 실기 연습용 저장소. WSL2(Ubuntu) 또는 macOS의 Docker
+Desktop 위에 [kind](https://kind.sigs.k8s.io/)로 단일 노드 클러스터를 띄우고, AI 에이전트가
 killer.sh 형식의 모의고사를 출제·채점한다.
 
 | 경로 | 내용 |
@@ -11,6 +11,8 @@ killer.sh 형식의 모의고사를 출제·채점한다.
 | [`docs/mock-exam.md`](docs/mock-exam.md) | 모의고사 출제·풀이·채점 기준 |
 
 ## 환경
+
+검증한 환경. 아래 표는 WSL 기준이고, macOS는 [macOS](#macos) 절을 본다.
 
 | 항목 | 버전 |
 |---|---|
@@ -24,6 +26,8 @@ killer.sh 형식의 모의고사를 출제·채점한다.
 | ttyd | 1.7.7 |
 
 ## 사전 준비
+
+### WSL
 
 1. **WSL을 cgroup v2 전용으로 설정한다.** kubelet 1.35+는 cgroup v1
    호스트에서 기동하지 않는다. `C:\Users\<사용자>\.wslconfig`:
@@ -46,10 +50,33 @@ killer.sh 형식의 모의고사를 출제·채점한다.
 3. `~/.local/bin`이 `PATH`에 있어야 한다(Ubuntu 기본 `.profile`이 추가).
    sudo는 필요 없다.
 
+### macOS
+
+macOS 14.5(Apple Silicon) + Docker Desktop 29.9.2에서 검증했다. Docker
+Desktop의 리눅스 VM이 cgroup v2라 WSL 같은 설정은 필요 없다.
+
+1. **Docker Desktop**을 설치하고 실행한다.
+2. **[Homebrew](https://brew.sh)**가 있어야 한다. `install.sh`가 brew로
+   다음을 설치한다.
+   - `bash`(4+)와 `jq`: `grade.sh`가 연관 배열과 jq를 쓴다. macOS 기본
+     bash는 3.2라서 `exam.sh`가 brew bin을 `PATH` 앞에 넣고 실행한다.
+     시험 화면 밖에서 `grade.sh`를 직접 돌리려면 brew bash가 `PATH`에서
+     `/bin/bash`보다 앞에 있어야 한다.
+   - ttyd 빌드 의존성(`cmake`, `libuv`, `json-c`, `openssl@3`): ttyd는
+     macOS 바이너리를 배포하지 않고, brew의 ttyd formula는 Homebrew가
+     지원을 줄인 macOS 버전(Tier 3)에서 의존성 빌드가 실패한다. 그래서
+     `install.sh`가 libwebsockets 4.3.5(정적)와 ttyd 1.7.7 소스를 받아
+     체크섬을 검증한 뒤 직접 빌드한다. `TTYD_VERSION`은 무시된다.
+   - 이미 설치된 brew 패키지는 업그레이드하지 않는다
+     (`HOMEBREW_NO_INSTALL_UPGRADE=1`). Tier 3 macOS에서는 업그레이드가
+     소스 빌드로 바뀌어 실패할 수 있다.
+3. `~/.local/bin`을 `PATH`에 추가한다(`~/.zshrc`에
+   `export PATH="$HOME/.local/bin:$PATH"`).
+
 ## 클러스터 띄우기
 
 ```bash
-./scripts/install.sh   # kubectl, kind, ttyd를 ~/.local/bin에 설치 (체크섬 검증)
+./scripts/install.sh   # kubectl, kind, ttyd를 ~/.local/bin에 설치 (체크섬 검증, macOS는 ttyd 소스 빌드)
 ./scripts/up.sh        # 클러스터 생성 + 파드를 띄울 수 있을 때까지 대기
 ```
 
@@ -81,7 +108,7 @@ kubectl delete pod nginx
 ## 시험 화면 (killer.sh 스타일)
 
 ```bash
-./scripts/exam.sh    # http://localhost:8000/ 을 Windows 브라우저에서 연다
+./scripts/exam.sh    # http://localhost:8000/ 을 브라우저(WSL이면 Windows 쪽)에서 연다
 ```
 
 1. **환경 확인** -- 터미널(ttyd), Docker, kind, kubectl이 준비됐는지 확인.
@@ -90,7 +117,7 @@ kubectl delete pod nginx
    돌리고 로그를 보여 준다.
 4. 준비가 끝나야 **Start exam**이 켜진다.
 5. 시작하면 타이머가 돌고, 왼쪽에 문제(번호 탭, 플래그, 인라인 코드 클릭 시
-   복사), 오른쪽에 WSL bash 터미널(`k` 별칭·자동완성, 저장소 루트에서
+   복사), 오른쪽에 bash 터미널(WSL bash, macOS는 brew bash)(`k` 별칭·자동완성, 저장소 루트에서
    시작)이 뜬다.
 6. **End exam**을 누르면 `<회차>/finished.json`에 종료를 기록하고
    `grade.sh`를 돌려 `<회차>/grade.json`에 저장한 뒤, 결과 화면(총점·합격
@@ -102,8 +129,9 @@ kubectl delete pod nginx
 지우고 `answers/` 파일은 남기므로, 환경 준비가 이전 시도의 답안과 결과를
 `<회차>/attempts/<시각>/`로 옮기고 시작한다.
 
-- 두 서버 모두 `127.0.0.1`에만 바인딩한다. WSL localhost 포워딩으로 같은
-  PC의 Windows 브라우저에서만 열리고, 네트워크의 다른 기기에서는 안 열린다.
+- 두 서버 모두 `127.0.0.1`에만 바인딩한다. 같은 PC의 브라우저(WSL이면
+  localhost 포워딩으로 Windows 브라우저)에서만 열리고, 네트워크의 다른
+  기기에서는 안 열린다.
 - ttyd는 `-O`로 다른 origin의 웹소켓 연결을 거부하고, 준비 API는 정해진
   스크립트만 돌리며 커스텀 헤더 없는 요청을 거부한다. 브라우저에 열린 다른
   사이트가 터미널이나 클러스터를 건드릴 수 없다.
