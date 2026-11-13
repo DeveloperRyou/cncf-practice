@@ -1,0 +1,42 @@
+{
+  "questions": {
+    "1": {
+      "domain": "Workloads and Scheduling",
+      "topics": [
+        "Taint and toleration",
+        "Required node affinity",
+        "PriorityClass"
+      ]
+    },
+    "2": {
+      "domain": "Troubleshooting",
+      "topics": [
+        "Cluster DNS (CoreDNS Corefile)",
+        "Pod dnsPolicy",
+        "CoreDNS hosts plugin"
+      ]
+    },
+    "3": {
+      "domain": "Workloads and Scheduling",
+      "topics": [
+        "kubectl top (metrics-server)",
+        "Resource requests and limits",
+        "HPA autoscaling/v2 with scaleDown behavior"
+      ]
+    },
+    "4": {
+      "domain": "Services and Networking",
+      "topics": [
+        "NetworkPolicy selection (least permissive)",
+        "NodePort Service"
+      ]
+    },
+    "5": {
+      "domain": "Storage",
+      "topics": [
+        "Released PersistentVolume reuse (claimRef)",
+        "PVC volume in a Deployment"
+      ]
+    }
+  }
+}

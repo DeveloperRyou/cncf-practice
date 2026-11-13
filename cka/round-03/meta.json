@@ -1,0 +1,44 @@
+{
+  "questions": {
+    "1": {
+      "domain": "Troubleshooting",
+      "topics": [
+        "Pending pods",
+        "Control plane components (static pod manifests)",
+        "Service and Pod CIDR"
+      ]
+    },
+    "2": {
+      "domain": "Cluster Architecture, Installation and Configuration",
+      "topics": [
+        "Static pod on a worker node",
+        "kubelet configuration",
+        "Container runtime (CRI)"
+      ]
+    },
+    "3": {
+      "domain": "Workloads and Scheduling",
+      "topics": [
+        "DaemonSet on every node",
+        "Native sidecar container",
+        "DaemonSet rolling update"
+      ]
+    },
+    "4": {
+      "domain": "Services and Networking",
+      "topics": [
+        "Service with no endpoints",
+        "TLS Secret",
+        "Ingress host / path / TLS"
+      ]
+    },
+    "5": {
+      "domain": "Cluster Architecture, Installation and Configuration",
+      "topics": [
+        "ServiceAccount RBAC",
+        "ClusterRole bound with RoleBinding",
+        "ClusterRoleBinding for cluster-scoped resources"
+      ]
+    }
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "questions": {
+    "1": {
+      "domain": "Cluster Architecture, Installation and Configuration",
+      "topics": [
+        "kubeconfig contexts and credentials",
+        "Control plane certificate expiry (kubeadm certs)"
+      ]
+    },
+    "2": {
+      "domain": "Cluster Architecture, Installation and Configuration",
+      "topics": [
+        "Helm repo and install",
+        "Custom resource from a chart's CRD"
+      ]
+    },
+    "3": {
+      "domain": "Workloads and Scheduling",
+      "topics": [
+        "Calling the Kubernetes API from a Pod with a ServiceAccount",
+        "Pod QoS classes and eviction order"
+      ]
+    },
+    "4": {
+      "domain": "Services and Networking",
+      "topics": [
+        "NetworkPolicy egress by pod label and port",
+        "Ingress to Gateway API HTTPRoute with header match"
+      ]
+    },
+    "5": {
+      "domain": "Troubleshooting",
+      "topics": [
+        "CoreDNS Corefile and ConfigMap backup",
+        "crictl: container ID, inspect and logs on a node"
+      ]
+    }
+  }
+}

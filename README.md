@@ -1,13 +1,14 @@
 # cncf-practice
 
-CNCF 자격증(CKAD 등) 실기 연습용 저장소. WSL2(Ubuntu) 또는 macOS의 Docker
-Desktop 위에 [kind](https://kind.sigs.k8s.io/)로 단일 노드 클러스터를 띄우고, AI 에이전트가
+CNCF 자격증(CKAD, CKA) 실기 연습용 저장소. WSL2(Ubuntu) 또는 macOS의 Docker
+Desktop 위에 [kind](https://kind.sigs.k8s.io/)로 클러스터(CKAD 단일 노드, CKA 노드 3대)를 띄우고, AI 에이전트가
 killer.sh 형식의 모의고사를 출제·채점한다.
 
 | 경로 | 내용 |
 |---|---|
 | `scripts/`, `kind/` | 로컬 클러스터 설치·생성 |
 | [`ckad/`](ckad/) | CKAD 모의고사 (회차별 디렉터리) |
+| [`cka/`](cka/) | CKA 모의고사 (노드 3대, 회차별 디렉터리) |
 | [`docs/mock-exam.md`](docs/mock-exam.md) | 모의고사 출제·풀이·채점 기준 |
 
 ## 환경
@@ -105,6 +106,8 @@ kubectl delete pod nginx
 - `KUBECTL_VERSION=v1.37.1 KIND_VERSION=v0.33.0 HELM_VERSION=v4.3.0 TTYD_VERSION=1.7.7 ./scripts/install.sh` --
   버전 고정 (생략하면 최신 stable)
 - `CLUSTER_NAME=foo ./scripts/up.sh` -- 클러스터 이름 (기본 `cncf`)
+- `KIND_CONFIG=kind/cka.yaml ./scripts/up.sh` -- 노드 구성 (기본 `kind/cluster.yaml`;
+  CKA는 control plane 1 + worker 2)
 
 ## 시험 화면 (killer.sh 스타일)
 

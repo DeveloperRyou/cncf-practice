@@ -97,7 +97,10 @@ class Job:
 
 
 def prepare_script(rnd, recreate):
-    steps = (["./scripts/down.sh", "./scripts/up.sh"] if recreate else ["./scripts/up.sh"])
+    # A cert may need its own node layout (kind/cka.yaml: 3 nodes).
+    cfg = ROOT / "kind" / f"{rnd.split('/')[0]}.yaml"
+    up = f"KIND_CONFIG=kind/{cfg.name} ./scripts/up.sh" if cfg.exists() else "./scripts/up.sh"
+    steps = (["./scripts/down.sh", up] if recreate else [up])
     steps.append(f"./{rnd}/setup.sh")
     return "set -e\n" + "\n".join(f"echo '$ {s}'; {s}" for s in steps)
 

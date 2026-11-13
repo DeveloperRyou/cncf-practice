@@ -5,3 +5,12 @@ alias k=kubectl
 source <(kubectl completion bash) 2>/dev/null
 complete -o default -F __start_kubectl k
 export EDITOR="${EDITOR:-vim}"
+# CKA: `ssh cncf-worker` opens a shell on that kind node, like the exam's
+# `ssh <node>`. Anything else falls through to the real ssh.
+ssh() {
+  if [ $# -eq 1 ] && kind get nodes --name "${CLUSTER_NAME:-cncf}" 2>/dev/null | grep -qx "$1"; then
+    docker exec -it "$1" bash
+  else
+    command ssh "$@"
+  fi
+}

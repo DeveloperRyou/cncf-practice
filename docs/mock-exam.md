@@ -79,6 +79,31 @@ README.md, setup.sh, grade.sh, meta.json, answers/.gitkeep뿐이다.
   답을 볼 수 없어야 한다. `grade.sh`는 채점 조건이 드러나므로 사용자는
   풀기 전에 열지 않는다(문제지에 명시).
 
+## CKA
+
+CKAD 기준을 따르되 아래가 다르다.
+
+- **분량**: 1회차 = 5문제, 40분(사용자 요청). 문제당 개념 2~3개는 같다.
+- **클러스터**: `kind/cka.yaml`(control plane 1 + worker 2). 시험 화면의
+  환경 준비는 `kind/<cert>.yaml`이 있으면 그 구성으로 `up.sh`를 돌린다.
+  노드 수가 다른 기존 클러스터는 `up.sh`가 거부하므로 `down.sh` 먼저.
+- **노드 작업**: 시험의 `ssh <node>`는 `docker exec -it <node> bash`
+  (시험 화면 터미널에서는 `ssh <node>` 함수). kind 노드에는 편집기가
+  없어 `cka/lib.sh`의 `prep_nodes`가 vim을 설치한다. 공통 설치
+  (Gateway API CRD, metrics-server)도 `cka/lib.sh`에 둔다.
+- **영역**(v1.35 커리큘럼): Cluster Architecture, Installation and
+  Configuration (25%), Workloads and Scheduling (15%), Services and
+  Networking (20%), Storage (10%), Troubleshooting (30%). 트러블슈팅은
+  회차마다 1문제 이상.
+- **kind에서 못 내는 것**: kubeadm upgrade/init/join, HA control plane,
+  CNI 교체, cri-dockerd 설치, 실제로 트래픽을 받는 Ingress/Gateway
+  컨트롤러(객체 spec만 채점). etcd 백업·복원은 2025년 개편으로 시험
+  범위에서 빠졌다.
+- **문제 간 간섭**: 한 클러스터를 공유하므로 노드를 바꾸는 문제(taint,
+  kubelet 장애)와 특정 노드에 파드를 두는 문제가 서로 막지 않게
+  배치한다. 클러스터 전체를 멈추는 장애(scheduler 등)는 그 회차의
+  1번에 둔다.
+
 ## 풀이 절차 (사용자)
 
 ```bash

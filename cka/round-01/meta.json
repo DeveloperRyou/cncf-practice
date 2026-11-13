@@ -1,0 +1,43 @@
+{
+  "questions": {
+    "1": {
+      "domain": "Cluster Architecture, Installation and Configuration",
+      "topics": [
+        "CertificateSigningRequest for a user",
+        "Role / RoleBinding to a group",
+        "kubeconfig with embedded certs"
+      ]
+    },
+    "2": {
+      "domain": "Troubleshooting",
+      "topics": [
+        "NotReady node",
+        "kubelet service (systemctl, journalctl)"
+      ]
+    },
+    "3": {
+      "domain": "Cluster Architecture, Installation and Configuration",
+      "topics": [
+        "helm template / install with values",
+        "CRD and custom resource",
+        "kubectl explain"
+      ]
+    },
+    "4": {
+      "domain": "Storage",
+      "topics": [
+        "StorageClass (WaitForFirstConsumer, default class)",
+        "PV / PVC binding (local volume)",
+        "read-only volume mount"
+      ]
+    },
+    "5": {
+      "domain": "Services and Networking",
+      "topics": [
+        "Ingress to Gateway API migration",
+        "Gateway HTTPS listener (TLS)",
+        "HTTPRoute path matching"
+      ]
+    }
+  }
+}
