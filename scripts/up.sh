@@ -19,7 +19,7 @@ if kind get clusters | grep -qx "$NAME"; then
   echo "cluster '$NAME' already exists"
   # A CKAD (1 node) cluster can't run a CKA (3 node) round and vice versa.
   want=$(grep -c -- '- role:' "$CONFIG")
-  have=$(kind get nodes --name "$NAME" | wc -l)
+  have=$(kind get nodes --name "$NAME" | wc -l | tr -d " ")
   [ "$want" = "$have" ] || { echo "cluster '$NAME' has $have node(s) but $(basename "$CONFIG") wants $want -- run ./scripts/down.sh first." >&2; exit 1; }
 else
   kind create cluster --name "$NAME" --config "$CONFIG"

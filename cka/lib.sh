@@ -12,7 +12,7 @@ METRICS_SERVER_VERSION=v0.7.2
 
 node() { docker exec -i "$1" bash -c "$2"; }  # node <name> <script>
 
-[ "$(kind get nodes --name "$CLUSTER" 2>/dev/null | wc -l)" = 3 ] \
+[ "$(kind get nodes --name "$CLUSTER" 2>/dev/null | wc -l | tr -d " ")" = 3 ] \
   || { echo "CKA rounds need the 3-node cluster: ./scripts/down.sh && KIND_CONFIG=kind/cka.yaml ./scripts/up.sh" >&2; exit 1; }
 
 # kind nodes ship without an editor; the exam nodes have vim.
